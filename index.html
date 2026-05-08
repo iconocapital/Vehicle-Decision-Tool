@@ -1,0 +1,1635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Iconoclastic Capital — Vehicle Acquisition Path Planner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hedvig+Letters+Serif:opsz@12..24&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  /* ---------- Iconoclastic Capital brand system ---------- */
+  :root{
+    --teal-deep:#1C5355;
+    --teal-accent:#4EB8BC;
+    --teal-shade:#0F3A3C;
+    --cream:#F5EFE2;
+    --cream-soft:#FAF6EC;
+    --cream-darker:#E8DFC8;
+    --ink:#1A1F1F;
+    --ink-soft:#3D4747;
+    --muted:#6B7676;
+    --rule:#D9CFB6;
+    --warn:#B85C2E;
+    --good:#3F8F4D;
+    --shadow:0 8px 28px rgba(28,83,85,.08), 0 1px 3px rgba(28,83,85,.06);
+    --serif:'Hedvig Letters Serif', Georgia, 'Times New Roman', serif;
+    --sans:'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:var(--sans);
+    color:var(--ink);
+    background:var(--cream);
+    line-height:1.5;
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+  }
+  h1,h2,h3,h4{font-family:var(--serif); font-weight:400; letter-spacing:-.01em; color:var(--teal-deep); margin:0}
+  h1{font-size:clamp(1.9rem,4vw,2.7rem); line-height:1.1}
+  h2{font-size:clamp(1.4rem,2.6vw,1.85rem); line-height:1.15}
+  h3{font-size:1.15rem; line-height:1.25}
+  p{margin:0 0 .8em}
+  a{color:var(--teal-deep); text-underline-offset:3px}
+  a:hover{color:var(--teal-accent)}
+  .num{font-family:var(--serif); font-feature-settings:"tnum","lnum"; font-variant-numeric:tabular-nums lining-nums}
+
+  /* ---------- Layout ---------- */
+  .shell{max-width:1180px; margin:0 auto; padding:24px 22px 64px}
+  header.topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:18px 0 22px; border-bottom:1px solid var(--rule);
+    margin-bottom:28px;
+  }
+  .wordmark{font-family:var(--serif); font-size:1.35rem; color:var(--teal-deep); letter-spacing:.01em}
+  .wordmark .dot{color:var(--teal-accent)}
+  .tagline{font-size:.78rem; color:var(--muted); text-transform:uppercase; letter-spacing:.18em}
+
+  /* ---------- Guided Path progress (upward arrow motif) ---------- */
+  .guided-path{
+    display:flex; align-items:flex-end; gap:6px; justify-content:center;
+    padding:10px 0 22px;
+  }
+  .gp-step{
+    display:flex; flex-direction:column; align-items:center; gap:6px;
+    flex:1; max-width:160px; cursor:default;
+  }
+  .gp-arrow{
+    width:100%; height:8px; background:var(--cream-darker);
+    clip-path:polygon(0 100%, 92% 100%, 100% 0, 8% 0);
+    transition:background .35s ease;
+  }
+  .gp-step.done .gp-arrow{background:var(--teal-accent)}
+  .gp-step.active .gp-arrow{background:var(--teal-deep)}
+  .gp-label{font-size:.72rem; text-transform:uppercase; letter-spacing:.14em; color:var(--muted); text-align:center}
+  .gp-step.done .gp-label, .gp-step.active .gp-label{color:var(--teal-deep)}
+
+  /* ---------- Cards ---------- */
+  .card{
+    background:#fff; border:1px solid var(--rule); border-radius:10px;
+    padding:28px 30px; box-shadow:var(--shadow); margin-bottom:22px;
+  }
+  .card.pad-lg{padding:36px}
+  .eyebrow{font-size:.72rem; text-transform:uppercase; letter-spacing:.18em; color:var(--teal-accent); font-weight:600; margin-bottom:8px}
+  .lede{font-size:1.05rem; color:var(--ink-soft); max-width:62ch}
+
+  /* ---------- Form controls ---------- */
+  .group{margin-top:22px}
+  .group h3{margin-bottom:6px}
+  .group .help{color:var(--muted); font-size:.88rem; margin-bottom:10px}
+  .field{margin-bottom:18px}
+  label.field-label{display:block; font-weight:500; color:var(--ink); margin-bottom:8px; font-size:.95rem}
+  label.field-label .opt{font-weight:400; color:var(--muted); font-size:.82rem; margin-left:6px}
+  .opt-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:8px}
+  .opt-grid.tight{grid-template-columns:repeat(auto-fit, minmax(120px, 1fr))}
+  .opt-pill{
+    display:flex; align-items:center; justify-content:center; text-align:center;
+    border:1px solid var(--rule); background:#fff; color:var(--ink-soft);
+    padding:11px 12px; border-radius:7px; cursor:pointer; font-size:.92rem;
+    transition:all .15s ease; user-select:none; font-family:var(--sans);
+  }
+  .opt-pill:hover{border-color:var(--teal-accent); color:var(--teal-deep)}
+  .opt-pill.selected{
+    border-color:var(--teal-deep); background:var(--teal-deep); color:#fff;
+    box-shadow:0 2px 8px rgba(28,83,85,.18);
+  }
+  .opt-pill.selected.accent{background:var(--teal-accent); border-color:var(--teal-accent)}
+  input[type=text], input[type=number], select, textarea{
+    width:100%; font-family:var(--sans); font-size:1rem; color:var(--ink);
+    border:1px solid var(--rule); border-radius:7px; background:#fff;
+    padding:11px 13px; outline:none; transition:border-color .15s;
+  }
+  input[type=text]:focus, input[type=number]:focus, select:focus, textarea:focus{
+    border-color:var(--teal-deep); box-shadow:0 0 0 3px rgba(78,184,188,.15);
+  }
+  .row{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+  @media(max-width:640px){.row{grid-template-columns:1fr}}
+  .slider-wrap{display:flex; align-items:center; gap:14px}
+  .slider-wrap input[type=range]{flex:1}
+  .slider-val{
+    min-width:48px; text-align:center; padding:6px 10px;
+    background:var(--cream-soft); border-radius:6px; font-weight:600;
+    color:var(--teal-deep);
+  }
+  .checks{display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:6px}
+  .checks label{
+    display:flex; align-items:center; gap:8px; padding:8px 10px;
+    border:1px solid var(--rule); border-radius:6px; cursor:pointer;
+    background:#fff; font-size:.9rem; transition:all .15s;
+  }
+  .checks label:hover{border-color:var(--teal-accent)}
+  .checks label.on{border-color:var(--teal-deep); background:var(--cream-soft)}
+  .checks input{accent-color:var(--teal-deep)}
+
+  /* ---------- Buttons ---------- */
+  .btn{
+    display:inline-flex; align-items:center; gap:8px; cursor:pointer;
+    font-family:var(--sans); font-weight:500; font-size:.98rem;
+    padding:13px 22px; border-radius:7px; border:1px solid transparent;
+    transition:all .18s ease;
+  }
+  .btn-primary{background:var(--teal-deep); color:#fff}
+  .btn-primary:hover{background:var(--teal-shade)}
+  .btn-secondary{background:#fff; color:var(--teal-deep); border-color:var(--teal-deep)}
+  .btn-secondary:hover{background:var(--cream-soft)}
+  .btn-ghost{background:transparent; color:var(--ink-soft); padding:10px 16px}
+  .btn-ghost:hover{color:var(--teal-deep)}
+  .btn-row{display:flex; justify-content:space-between; align-items:center; margin-top:28px; gap:12px; flex-wrap:wrap}
+  .btn:disabled{opacity:.45; cursor:not-allowed}
+
+  /* ---------- Result paths ---------- */
+  .paths{display:grid; grid-template-columns:1fr 1fr; gap:22px; margin-top:18px}
+  @media(max-width:840px){.paths{grid-template-columns:1fr}}
+  .path-card{
+    background:#fff; border:1px solid var(--rule); border-radius:10px; padding:26px;
+    position:relative; overflow:hidden;
+  }
+  .path-card.primary{border:2px solid var(--teal-deep)}
+  .path-card .ribbon{
+    position:absolute; top:14px; right:-30px; transform:rotate(35deg);
+    background:var(--teal-deep); color:#fff; font-size:.7rem; padding:3px 36px;
+    letter-spacing:.16em; text-transform:uppercase;
+  }
+  .path-title{font-size:1.5rem; margin-bottom:4px}
+  .path-sub{color:var(--muted); font-size:.9rem; margin-bottom:18px}
+  .hero-fig{
+    font-family:var(--serif); font-size:2.4rem; color:var(--teal-deep);
+    line-height:1; margin:8px 0 2px;
+    font-feature-settings:"tnum","lnum"; font-variant-numeric:tabular-nums lining-nums;
+  }
+  .hero-cap{font-size:.78rem; color:var(--muted); text-transform:uppercase; letter-spacing:.14em; margin-bottom:14px}
+  .fit-bar{
+    background:var(--cream-darker); height:8px; border-radius:4px; overflow:hidden;
+    margin:6px 0 4px;
+  }
+  .fit-bar > span{display:block; height:100%; background:var(--teal-accent); border-radius:4px; transition:width .6s ease}
+  .fit-num{font-family:var(--serif); font-size:1.1rem; color:var(--teal-deep)}
+  .breakdown{margin-top:16px; border-top:1px dashed var(--rule); padding-top:12px}
+  .row-line{display:flex; justify-content:space-between; padding:5px 0; font-size:.92rem; color:var(--ink-soft)}
+  .row-line.bold{font-weight:600; color:var(--ink); border-top:1px solid var(--rule); padding-top:8px; margin-top:6px}
+  .row-line .num{font-weight:500}
+  details.math{margin-top:14px; font-size:.86rem}
+  details.math summary{cursor:pointer; color:var(--teal-deep); font-weight:500; padding:4px 0}
+  details.math .math-body{
+    margin-top:10px; padding:12px 14px; background:var(--cream-soft);
+    border-radius:6px; color:var(--ink-soft); font-family:ui-monospace, 'SF Mono', Menlo, monospace;
+    font-size:.78rem; line-height:1.55; white-space:pre-wrap;
+  }
+  .rationale{
+    background:var(--cream-soft); padding:12px 14px; border-radius:7px;
+    margin-top:14px; font-size:.92rem; color:var(--ink-soft);
+    border-left:3px solid var(--teal-accent);
+  }
+  .opp-cost{
+    background:#fff; border:1.5px dashed var(--teal-accent);
+    padding:14px 16px; border-radius:8px; margin-top:14px;
+  }
+  .opp-cost .eyebrow{color:var(--teal-deep)}
+  .opp-cost-fig{font-family:var(--serif); font-size:1.4rem; color:var(--teal-deep); margin-top:2px}
+
+  /* ---------- Listings ---------- */
+  .listings-grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:10px; margin-top:14px}
+  .listing-link{
+    display:block; padding:14px; background:#fff; border:1px solid var(--rule);
+    border-radius:8px; text-decoration:none; transition:all .15s; color:var(--ink);
+  }
+  .listing-link:hover{border-color:var(--teal-deep); transform:translateY(-2px); box-shadow:var(--shadow); color:var(--teal-deep)}
+  .listing-link .src{font-size:.78rem; text-transform:uppercase; letter-spacing:.14em; color:var(--teal-accent); font-weight:600}
+  .listing-link .ttl{font-size:.95rem; margin-top:4px}
+  .dealer-list{margin:10px 0; padding:0; list-style:none}
+  .dealer-list li{padding:8px 0; border-bottom:1px solid var(--rule); display:flex; justify-content:space-between; gap:10px; font-size:.92rem}
+  .dealer-list li:last-child{border-bottom:none}
+
+  /* ---------- Misc ---------- */
+  .data-stamp{
+    display:inline-block; font-size:.74rem; color:var(--muted);
+    background:var(--cream-soft); padding:4px 9px; border-radius:4px;
+    border:1px solid var(--rule); letter-spacing:.04em;
+  }
+  .alert{
+    background:#FFF8F2; border:1px solid #F0D8C2; color:var(--warn);
+    padding:12px 14px; border-radius:7px; margin:12px 0; font-size:.92rem;
+  }
+  .info{
+    background:var(--cream-soft); border:1px solid var(--rule);
+    padding:12px 14px; border-radius:7px; margin:12px 0; font-size:.92rem;
+    color:var(--ink-soft);
+  }
+  .footer-note{
+    text-align:center; font-size:.78rem; color:var(--muted);
+    border-top:1px solid var(--rule); padding-top:22px; margin-top:42px;
+    line-height:1.6;
+  }
+  .footer-note .wm{font-family:var(--serif); color:var(--teal-deep); font-size:1.1rem; display:block; margin-bottom:6px}
+  .disclaimer{
+    background:var(--cream-soft); padding:18px 20px; border-radius:8px;
+    font-size:.82rem; color:var(--ink-soft); margin-top:22px; line-height:1.6;
+    border-left:3px solid var(--teal-deep);
+  }
+  .chart-wrap{position:relative; width:100%; height:260px; margin-top:14px}
+  .compare-grid{display:grid; grid-template-columns:1fr 1fr 1fr; gap:0; margin-top:18px; border:1px solid var(--rule); border-radius:8px; overflow:hidden}
+  .compare-grid > div{padding:12px 14px; border-right:1px solid var(--rule); border-bottom:1px solid var(--rule); font-size:.9rem; background:#fff}
+  .compare-grid > div:nth-child(3n){border-right:none}
+  .compare-grid .h{background:var(--cream-soft); font-weight:600; color:var(--teal-deep); text-transform:uppercase; font-size:.74rem; letter-spacing:.14em}
+  .compare-grid .lbl{color:var(--muted); font-size:.78rem; text-transform:uppercase; letter-spacing:.1em}
+
+  @media print{
+    body{background:#fff}
+    .no-print{display:none !important}
+    .card{box-shadow:none; border:1px solid #ccc; page-break-inside:avoid}
+    .path-card{page-break-inside:avoid}
+  }
+
+  /* Hide all phases initially; JS reveals one at a time */
+  .phase{display:none}
+  .phase.active{display:block; animation:fadeIn .4s ease}
+  @keyframes fadeIn{from{opacity:0; transform:translateY(8px)} to{opacity:1; transform:none}}
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <header class="topbar">
+    <div>
+      <div class="wordmark">Iconoclastic Capital<span class="dot">.</span></div>
+      <div class="tagline">Right here with you</div>
+    </div>
+    <div class="data-stamp" id="dataStamp">Data refreshed 2026-05-08 · Monroe County, NY</div>
+  </header>
+
+  <!-- Guided Path progress -->
+  <nav class="guided-path no-print" id="guidedPath">
+    <div class="gp-step active" data-step="1"><div class="gp-arrow"></div><div class="gp-label">Welcome</div></div>
+    <div class="gp-step" data-step="2"><div class="gp-arrow"></div><div class="gp-label">Vehicle</div></div>
+    <div class="gp-step" data-step="3"><div class="gp-arrow"></div><div class="gp-label">Financial</div></div>
+    <div class="gp-step" data-step="4"><div class="gp-arrow"></div><div class="gp-label">Preferences</div></div>
+    <div class="gp-step" data-step="5"><div class="gp-arrow"></div><div class="gp-label">Your Paths</div></div>
+  </nav>
+
+  <!-- ========== PHASE 1: WELCOME ========== -->
+  <section class="phase active" data-phase="1">
+    <div class="card pad-lg">
+      <div class="eyebrow">A capital allocation question, not a payment question</div>
+      <h1>Two paths. One smart decision.</h1>
+      <p class="lede" style="margin-top:14px">
+        We'll walk through your situation in about ten minutes and produce two side-by-side acquisition paths —
+        finance, lease, CPO, or pay cash and invest the difference — sized for your finances, your driving, and
+        the May 2026 Rochester market. Every number shows its math. No surprises.
+      </p>
+      <div class="info" style="margin-top:18px">
+        <strong>What you'll see at the end:</strong> two complete cost-of-ownership comparisons,
+        an opportunity-cost overlay (the dollars your cash earns if invested instead),
+        a fit score for each path, current Monroe County listings, and a printable summary
+        you can review with your Icono advisor.
+      </div>
+      <div class="btn-row">
+        <span style="color:var(--muted); font-size:.9rem">Educational planning tool · Not personalized advice</span>
+        <button class="btn btn-primary" onclick="goToPhase(2)">Begin →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== PHASE 2: VEHICLE PREFERENCE ========== -->
+  <section class="phase" data-phase="2">
+    <div class="card">
+      <div class="eyebrow">Group A · The vehicle</div>
+      <h2>What are you looking for?</h2>
+
+      <div class="group">
+        <label class="field-label">1. What's driving this purchase?</label>
+        <div class="opt-grid" data-q="driver">
+          <div class="opt-pill" data-v="replace">Replacing aging vehicle</div>
+          <div class="opt-pill" data-v="add">Adding household vehicle</div>
+          <div class="opt-pill" data-v="first">First car</div>
+          <div class="opt-pill" data-v="lifestyle">Lifestyle change</div>
+          <div class="opt-pill" data-v="leaseEnd">Lease ending</div>
+        </div>
+      </div>
+
+      <div class="group">
+        <label class="field-label">2. Body style preference</label>
+        <div class="opt-grid" data-q="body">
+          <div class="opt-pill" data-v="sedan">Sedan</div>
+          <div class="opt-pill" data-v="suv">SUV / Crossover</div>
+          <div class="opt-pill" data-v="truck">Truck</div>
+          <div class="opt-pill" data-v="minivan">Minivan</div>
+          <div class="opt-pill" data-v="ev">EV-specific</div>
+          <div class="opt-pill" data-v="any">No preference</div>
+        </div>
+      </div>
+
+      <div class="group">
+        <label class="field-label">3. Powertrain preference</label>
+        <div class="opt-grid" data-q="powertrain">
+          <div class="opt-pill" data-v="gas">Gas</div>
+          <div class="opt-pill" data-v="hybrid">Hybrid</div>
+          <div class="opt-pill" data-v="phev">Plug-in hybrid</div>
+          <div class="opt-pill" data-v="bev">EV (battery)</div>
+          <div class="opt-pill" data-v="any">No preference</div>
+        </div>
+      </div>
+
+      <div class="group">
+        <label class="field-label">4. New, CPO, or used?</label>
+        <div class="opt-grid" data-q="condition">
+          <div class="opt-pill" data-v="new">New</div>
+          <div class="opt-pill" data-v="cpo">CPO</div>
+          <div class="opt-pill" data-v="used">Used</div>
+          <div class="opt-pill" data-v="open">Open to all</div>
+        </div>
+      </div>
+
+      <div class="group">
+        <label class="field-label">5. Specific makes / models in mind? <span class="opt">optional</span></label>
+        <input type="text" id="modelsText" placeholder="e.g., Toyota Grand Highlander, Hyundai Ioniq 5, BMW X3" />
+      </div>
+
+      <div class="group">
+        <label class="field-label">6. Must-have features <span class="opt">multi-select</span></label>
+        <div class="checks" data-q="features">
+          <label><input type="checkbox" value="awd" /> AWD / 4WD</label>
+          <label><input type="checkbox" value="3row" /> 3rd row</label>
+          <label><input type="checkbox" value="tow" /> Towing capacity</label>
+          <label><input type="checkbox" value="adas" /> Advanced safety (ADAS)</label>
+          <label><input type="checkbox" value="apple" /> CarPlay / Android Auto</label>
+          <label><input type="checkbox" value="leather" /> Leather</label>
+          <label><input type="checkbox" value="sunroof" /> Sunroof</label>
+          <label><input type="checkbox" value="captain" /> Captain's chairs</label>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="group">
+          <label class="field-label">7. Annual mileage estimate</label>
+          <div class="opt-grid tight" data-q="mileage">
+            <div class="opt-pill" data-v="7500">&lt;7,500</div>
+            <div class="opt-pill" data-v="10000">7.5k–12k</div>
+            <div class="opt-pill" data-v="13500">12k–15k</div>
+            <div class="opt-pill" data-v="17500">15k–20k</div>
+            <div class="opt-pill" data-v="22000">20k+</div>
+          </div>
+        </div>
+        <div class="group">
+          <label class="field-label">8. How long do you keep a vehicle?</label>
+          <div class="opt-grid tight" data-q="hold">
+            <div class="opt-pill" data-v="2.5">&lt;3 yrs</div>
+            <div class="opt-pill" data-v="4">3–5 yrs</div>
+            <div class="opt-pill" data-v="6.5">5–8 yrs</div>
+            <div class="opt-pill" data-v="9">8+ yrs</div>
+            <div class="opt-pill" data-v="12">Until it dies</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-ghost" onclick="goToPhase(1)">← Back</button>
+        <button class="btn btn-primary" onclick="goToPhase(3)">Next →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== PHASE 3: FINANCIAL ========== -->
+  <section class="phase" data-phase="3">
+    <div class="card">
+      <div class="eyebrow">Group B · The financial picture</div>
+      <h2>Let's size the decision properly.</h2>
+      <p class="lede" style="margin-bottom:18px">All figures stay in your browser. Nothing is transmitted.</p>
+
+      <div class="row">
+        <div class="group">
+          <label class="field-label">9. ZIP code</label>
+          <input type="text" id="zip" maxlength="5" placeholder="14618" value="14618" />
+        </div>
+        <div class="group">
+          <label class="field-label">10. Household income</label>
+          <select id="income">
+            <option value="75000">Under $100k</option>
+            <option value="125000" selected>$100k – $150k</option>
+            <option value="200000">$150k – $250k</option>
+            <option value="350000">$250k – $500k</option>
+            <option value="750000">$500k+</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="group">
+        <label class="field-label">11. Credit profile</label>
+        <div class="opt-grid" data-q="credit">
+          <div class="opt-pill" data-v="superprime">Excellent (760+)</div>
+          <div class="opt-pill" data-v="prime">Good (700–759)</div>
+          <div class="opt-pill" data-v="nearprime">Fair (660–699)</div>
+          <div class="opt-pill" data-v="subprime">Challenged (&lt;660)</div>
+          <div class="opt-pill" data-v="unknown">Not sure</div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="group">
+          <label class="field-label">12. Cash available for down payment / outright</label>
+          <input type="number" id="cashAvail" placeholder="20000" value="20000" />
+        </div>
+        <div class="group">
+          <label class="field-label">13. Comfortable monthly transportation budget <span class="opt">all-in</span></label>
+          <input type="number" id="monthlyBudget" placeholder="800" value="800" />
+        </div>
+      </div>
+
+      <div class="group">
+        <label class="field-label">14. Current vehicle situation</label>
+        <div class="opt-grid" data-q="currentVeh">
+          <div class="opt-pill" data-v="own">Own outright</div>
+          <div class="opt-pill" data-v="financed">Financed (still paying)</div>
+          <div class="opt-pill" data-v="leased">Leased</div>
+          <div class="opt-pill" data-v="none">None</div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="group">
+          <label class="field-label">15. Estimated trade-in value <span class="opt">if applicable</span></label>
+          <input type="number" id="tradeIn" placeholder="0" value="0" />
+        </div>
+        <div class="group">
+          <label class="field-label">16. Expected return on invested cash <span class="opt">nominal annual %</span></label>
+          <div class="slider-wrap">
+            <input type="range" id="expectedReturn" min="2" max="12" step="0.5" value="6" />
+            <div class="slider-val"><span id="erVal">6.0</span>%</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="group">
+          <label class="field-label">17. State of residence</label>
+          <select id="state">
+            <option value="NY" selected>New York</option>
+            <option value="other">Other (uses national defaults)</option>
+          </select>
+        </div>
+        <div class="group">
+          <label class="field-label">Tax filing</label>
+          <select id="filing">
+            <option value="single">Single</option>
+            <option value="joint" selected>Married filing jointly</option>
+            <option value="hoh">Head of household</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="group">
+        <label class="field-label">18. Any business use of the vehicle?</label>
+        <div class="opt-grid tight" data-q="business">
+          <div class="opt-pill" data-v="none">None</div>
+          <div class="opt-pill" data-v="some">Some (&lt;50%)</div>
+          <div class="opt-pill" data-v="primary">Primary (≥50%)</div>
+        </div>
+        <div class="info" style="margin-top:8px; font-size:.85rem">
+          Business use can open Section 179 / bonus depreciation strategies — your Icono advisor will follow up
+          if you select a business-use option. The tool itself does <em>not</em> apply business deductions.
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-ghost" onclick="goToPhase(2)">← Back</button>
+        <button class="btn btn-primary" onclick="goToPhase(4)">Next →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== PHASE 4: DECISION PSYCHOLOGY ========== -->
+  <section class="phase" data-phase="4">
+    <div class="card">
+      <div class="eyebrow">Group C · How you weigh trade-offs</div>
+      <h2>A few last calibrations.</h2>
+      <p class="lede" style="margin-bottom:14px">These tune the fit score, not the math.</p>
+
+      <div class="group">
+        <label class="field-label">19. How important is having the latest features and safety tech?</label>
+        <div class="slider-wrap">
+          <input type="range" id="qNew" min="1" max="5" step="1" value="3" />
+          <div class="slider-val"><span id="qNewVal">3</span>/5</div>
+        </div>
+      </div>
+      <div class="group">
+        <label class="field-label">20. Monthly cash-flow flexibility vs. lowest long-term cost</label>
+        <div class="slider-wrap">
+          <span style="font-size:.78rem; color:var(--muted)">Long-term cost</span>
+          <input type="range" id="qCashflow" min="1" max="5" step="1" value="3" />
+          <span style="font-size:.78rem; color:var(--muted)">Monthly flex</span>
+          <div class="slider-val"><span id="qCashflowVal">3</span>/5</div>
+        </div>
+      </div>
+      <div class="group">
+        <label class="field-label">21. Comfort with mechanical risk on used vehicles</label>
+        <div class="slider-wrap">
+          <input type="range" id="qUsed" min="1" max="5" step="1" value="3" />
+          <div class="slider-val"><span id="qUsedVal">3</span>/5</div>
+        </div>
+      </div>
+      <div class="group">
+        <label class="field-label">22. Comfort with mileage restrictions on a lease</label>
+        <div class="slider-wrap">
+          <input type="range" id="qLease" min="1" max="5" step="1" value="3" />
+          <div class="slider-val"><span id="qLeaseVal">3</span>/5</div>
+        </div>
+      </div>
+
+      <div class="info">
+        <strong>The Icono lens:</strong> we don't optimize for the cheapest payment. We optimize for the best
+        capital allocation given your full financial picture. The tool will flag whenever the financing decision
+        meaningfully changes your investable balance — that's where most of the dollars actually live.
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-ghost" onclick="goToPhase(3)">← Back</button>
+        <button class="btn btn-primary" onclick="generatePaths()">Show my two paths →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== PHASE 5: RESULTS ========== -->
+  <section class="phase" data-phase="5">
+    <div class="card pad-lg">
+      <div class="eyebrow">Your two paths</div>
+      <h2 id="resultHeadline">Here's how the math lands.</h2>
+      <p class="lede" id="resultSubhead" style="margin-top:8px"></p>
+
+      <div class="paths" id="pathsContainer"></div>
+
+      <div class="card no-print" style="margin-top:24px; background:var(--cream-soft); border:1px dashed var(--teal-accent)">
+        <div class="eyebrow">Side-by-side at a glance</div>
+        <div class="compare-grid" id="compareGrid"></div>
+      </div>
+
+      <div class="card" style="margin-top:24px; background:#fff">
+        <div class="eyebrow">Cost over your hold period</div>
+        <h3>Total cost of transportation, year by year</h3>
+        <div class="chart-wrap"><canvas id="tcoChart"></canvas></div>
+      </div>
+
+      <div class="card" style="margin-top:24px">
+        <div class="eyebrow">Live inventory · Monroe County</div>
+        <h3 id="listingsTitle">Search current listings</h3>
+        <p style="color:var(--muted); font-size:.92rem; margin-top:6px">
+          Deep-link searches to the major platforms, filtered for your ZIP within ~50 miles.
+          Scrape-blocked sites mean no fake inventory shown — just one click to current results.
+        </p>
+        <div class="listings-grid" id="listingsGrid"></div>
+
+        <h3 style="margin-top:22px">Nearby franchise dealers</h3>
+        <ul class="dealer-list" id="dealerList"></ul>
+      </div>
+
+      <div class="disclaimer">
+        <strong>Important:</strong> This is an educational planning tool from Iconoclastic Capital Management
+        and does not constitute personalized investment, tax, legal, or financial advice. Rates, residuals,
+        money factors, incentive amounts, and inventory shift constantly — we date-stamp our data layer and
+        refresh on the cadence shown in the methodology document. Federal EV tax credits (§30D, §25E, §45W)
+        terminated September 30, 2025 under the One Big Beautiful Bill Act and are not available to
+        May 2026 buyers; the §30C residential charger credit sunsets June 30, 2026 and is restricted to
+        eligible census tracts. The opportunity-cost overlay assumes your stated nominal expected return
+        compounds annually before tax; actual after-tax outcomes depend on account type and tax bracket.
+        Results should be reviewed with your Icono advisor before acting.
+      </div>
+
+      <div class="btn-row no-print">
+        <button class="btn btn-ghost" onclick="goToPhase(4)">← Refine inputs</button>
+        <div style="display:flex; gap:10px; flex-wrap:wrap">
+          <button class="btn btn-secondary" onclick="window.print()">🖨 Print / Save as PDF</button>
+          <a class="btn btn-primary" href="https://calendly.com/iconocapital/intro" target="_blank" rel="noopener">
+            Schedule with your Icono advisor
+          </a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="footer-note">
+    <span class="wm">Iconoclastic Capital<span style="color:var(--teal-accent)">.</span></span>
+    Right here with you. · Fee-only fiduciary RIA · <span id="footerStamp"></span>
+  </div>
+</div>
+
+<script>
+/* =======================================================================
+   EMBEDDED DATA LAYER  ·  Last refreshed 2026-05-08
+   Sourced from compass research compiled May 7–8, 2026.
+   See 2026-05-08-icono-vehicle-tool-readme.md for refresh procedure.
+   ======================================================================= */
+const DATA = {
+  asOf: "2026-05-08",
+  geography: {
+    county: "Monroe County, NY", metro: "Rochester",
+    salesTax: 0.08,
+    snowfall: "70–120 in/yr (lake-effect)"
+  },
+  loanRates: {
+    // National avg APR by VantageScore tier (Experian Q4 2025, released 2026-03-05)
+    nationalNew: { superprime: 4.66, prime: 6.89, nearprime: 9.50, subprime: 12.90, unknown: 6.89 },
+    nationalUsed: { superprime: 7.7, prime: 9.75, nearprime: 13.5, subprime: 18.5, unknown: 11.0 },
+    // Best lender APRs verified 5/7-8/26 (PenFed Car Buying Service, Navy FCU rate page, ESL FCU Rochester)
+    monroeBest: {
+      newSuperprime: 3.39,   // PenFed
+      newPrime: 4.29,        // Navy Federal 60mo
+      newNearprime: 6.79,    // ESL 72mo
+      newSubprime: 9.99,     // estimated tier blend
+      usedSuperprime: 4.34,  // PenFed used
+      usedPrime: 5.29,       // Navy 60mo used
+      usedNearprime: 7.54,   // ESL 4yr-old
+      usedSubprime: 13.00
+    },
+    captiveOffers: [
+      { name: "Toyota bZ family", apr: 0.0, term: 72 },
+      { name: "Hyundai Ioniq 5 / Tucson", apr: 0.0, term: 72 },
+      { name: "Kia EV6 (+$10K cash)", apr: 0.0, term: 72 },
+      { name: "GM Equinox EV / Silverado", apr: 0.0, term: 60 },
+      { name: "Tesla Model 3 Standard", apr: 0.0, term: 72 },
+      { name: "Ford 2025 F-150 / Lightning", apr: 0.0, term: 60 },
+      { name: "Subaru Solterra (+$2K cash)", apr: 0.0, term: 75 },
+      { name: "Volvo EX90", apr: 0.0, term: 72 },
+      { name: "Honda Prologue", apr: 0.99, term: 60 },
+      { name: "Stellantis Wrangler/GC", apr: 0.0, term: 36 }
+    ]
+  },
+  lease: {
+    avgMFforSegment: { sedan: 0.0017, suv: 0.0022, truck: 0.0028, ev: 0.0010 },
+    avgResidualPct: { sedan: 56, suv: 60, truck: 58, ev: 56, hybridSuv: 67 },
+    acqFee: { mainstream: 595, toyota: 750, luxury: 800, tesla: 695 },
+    dispFee: { mainstream: 350, honda: 0, tesla: 0, luxury: 500 },
+    excessMileage: 0.20,
+    evLeaseCash: { ioniq5: 17250, prologue: 16550, ev9: 12850, equinoxEv: 10000, i4: 7500, ex90: 7500 }
+  },
+  used: {
+    manheimIndex: 211.9,
+    manheimMoM: -1.6,
+    avgUsed3yr: 30699,
+    avgUsed1yr: 38354,
+    newUsedGap: 10222, // widest Jan spread since 2015
+    depreciation5yr: { ice: 0.418, hybrid: 0.354, truck: 0.342, ev: 0.572, suv: 0.47 },
+    cpoBest: ["Hyundai/Kia/Genesis (10yr/100K)", "Lexus L/Certified (2yr unlimited B2B)", "Toyota Gold (7yr/100K)"]
+  },
+  ev: {
+    fedNewCredit: false,    // §30D terminated 2025-09-30
+    fedUsedCredit: false,   // §25E terminated
+    fedLeaseCredit: false,  // §45W terminated
+    fedChargerCredit30C: { active: true, max: 1000, pct: 0.30, sunset: "2026-06-30", restriction: "low-income or non-urban census tract only" },
+    autoLoanInterestDeduction: { active: true, maxPerYear: 10000, usAssemblyRequired: true, leaseEligible: false,
+      phaseoutSingle: [100000, 150000], phaseoutJoint: [200000, 250000] },
+    nyDriveClean: { tier2000: 2000, tier1000: 1000, tier500: 500, ruleHigh: "≥200mi range AND MSRP ≤ $42,000", noIncomeCap: true },
+    chargingHomeInstall: { hardware: 550, basicInstall: 1300, panelUpgrade: 3500 },
+    rgeKwh: 0.17, milesPerKwh: 3.5
+  },
+  tco: {
+    insAnnual: { sedan: 1900, suv: 1900, minivan: 1810, luxurySedan: 2660, luxurySuv: 2945, ev: 2470, truck: 2050 },
+    fuel: { rochesterRegular: 4.36, rochesterPremium: 5.18 },
+    maintAnnual: { honda: 428, toyota: 441, mazda: 480, hyundai: 520, kia: 530, lexus: 551, subaru: 580,
+      industryAvg: 652, ford: 700, gm: 720, mercedes: 908, bmw: 968, audi: 987, ev: 280 },
+    titlePlate: 75, regSedan2yr: 56.50, regSuv2yr: 105, monroeUseTax: 15, inspectionAnnual: 21, docFeeCapNY: 175
+  },
+  segmentDefaults: {
+    // Reasonable defaults for "midsize SUV" buyer if no specific model
+    sedan:    { msrpNew: 32000, msrp1yr: 27500, msrp3yr: 21000, mpgGas: 32, type: "sedan", brand: "honda" },
+    suv:      { msrpNew: 42000, msrp1yr: 36000, msrp3yr: 28000, mpgGas: 26, type: "suv", brand: "toyota" },
+    truck:    { msrpNew: 52000, msrp1yr: 44000, msrp3yr: 35000, mpgGas: 21, type: "truck", brand: "ford" },
+    minivan:  { msrpNew: 44000, msrp1yr: 37000, msrp3yr: 28000, mpgGas: 25, type: "minivan", brand: "honda" },
+    ev:       { msrpNew: 39990, msrp1yr: 32000, msrp3yr: 23000, mpgGas: null, type: "ev", brand: "tesla" }
+  },
+  dealers: {
+    toyota: ["Hoselton Toyota (East Rochester)", "Bob Johnson Toyota (Henrietta)", "West Herr Toyota Rochester"],
+    honda: ["Ralph Honda (Greece)", "Ide Honda (Penfield)", "Hoselton Honda"],
+    mazda: ["Marketplace Mazda (Henrietta)"],
+    subaru: ["Van Bortel Subaru (Henrietta)"],
+    hyundai: ["Vision Hyundai Henrietta", "Vision Hyundai Webster"],
+    kia: ["Vision Kia East Rochester", "Bob Johnson Kia"],
+    ford: ["West Herr Ford of Rochester", "Van Bortel Ford"],
+    chevrolet: ["Hoselton Chevrolet", "Bob Johnson Chevrolet"],
+    mercedes: ["Mercedes-Benz of Rochester"],
+    lexus: ["Bob Johnson Lexus"],
+    volvo: ["Volvo Cars Rochester (Garber)"],
+    tesla: ["Tesla Service Center (3535 W Henrietta Rd)"],
+    cpo: ["CarMax Rochester (3600 W Henrietta)"]
+  }
+};
+
+/* =======================================================================
+   STATE  ·  in-memory only (artifact env disallows browser storage)
+   ======================================================================= */
+const state = {
+  driver:null, body:null, powertrain:null, condition:null,
+  modelsText:"", features:new Set(),
+  mileage:null, hold:null,
+  zip:"14618", income:125000, credit:null,
+  cashAvail:20000, monthlyBudget:800,
+  currentVeh:null, tradeIn:0, expectedReturn:6,
+  state:"NY", filing:"joint", business:null,
+  qNew:3, qCashflow:3, qUsed:3, qLease:3
+};
+
+/* =======================================================================
+   UI WIRING
+   ======================================================================= */
+document.addEventListener('DOMContentLoaded', ()=>{
+  // Pill groups (single-select)
+  document.querySelectorAll('[data-q]').forEach(group=>{
+    const q = group.dataset.q;
+    if(group.classList.contains('checks')){
+      // multi-select
+      group.querySelectorAll('input[type=checkbox]').forEach(cb=>{
+        cb.addEventListener('change', ()=>{
+          const lbl = cb.parentElement;
+          if(cb.checked){ state[q].add(cb.value); lbl.classList.add('on'); }
+          else { state[q].delete(cb.value); lbl.classList.remove('on'); }
+        });
+      });
+    } else {
+      group.querySelectorAll('.opt-pill').forEach(p=>{
+        p.addEventListener('click', ()=>{
+          group.querySelectorAll('.opt-pill').forEach(x=>x.classList.remove('selected'));
+          p.classList.add('selected');
+          let v = p.dataset.v;
+          // numeric coercions
+          if(['mileage','hold'].includes(q)) v = parseFloat(v);
+          state[q] = v;
+        });
+      });
+    }
+  });
+
+  // Text/number inputs
+  document.getElementById('modelsText').addEventListener('input', e=> state.modelsText = e.target.value);
+  document.getElementById('zip').addEventListener('input', e=> state.zip = e.target.value);
+  document.getElementById('income').addEventListener('change', e=> state.income = +e.target.value);
+  document.getElementById('cashAvail').addEventListener('input', e=> state.cashAvail = +e.target.value || 0);
+  document.getElementById('monthlyBudget').addEventListener('input', e=> state.monthlyBudget = +e.target.value || 0);
+  document.getElementById('tradeIn').addEventListener('input', e=> state.tradeIn = +e.target.value || 0);
+  document.getElementById('state').addEventListener('change', e=> state.state = e.target.value);
+  document.getElementById('filing').addEventListener('change', e=> state.filing = e.target.value);
+
+  // Sliders
+  const er = document.getElementById('expectedReturn');
+  er.addEventListener('input', e=>{
+    state.expectedReturn = +e.target.value;
+    document.getElementById('erVal').textContent = state.expectedReturn.toFixed(1);
+  });
+  ['qNew','qCashflow','qUsed','qLease'].forEach(id=>{
+    const el = document.getElementById(id);
+    el.addEventListener('input', e=>{
+      state[id] = +e.target.value;
+      document.getElementById(id+'Val').textContent = state[id];
+    });
+  });
+
+  // Footer stamp
+  document.getElementById('footerStamp').textContent = 'Data layer dated ' + DATA.asOf;
+});
+
+function goToPhase(n){
+  document.querySelectorAll('.phase').forEach(p=> p.classList.remove('active'));
+  document.querySelector(`.phase[data-phase="${n}"]`).classList.add('active');
+  document.querySelectorAll('.gp-step').forEach(s=>{
+    const sn = +s.dataset.step;
+    s.classList.remove('done','active');
+    if(sn < n) s.classList.add('done');
+    if(sn === n) s.classList.add('active');
+  });
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+/* =======================================================================
+   FINANCE PRIMITIVES
+   ======================================================================= */
+const fmt$ = v => '$' + Math.round(v).toLocaleString('en-US');
+const fmt$1 = v => '$' + (Math.round(v*10)/10).toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0});
+const fmtPct = v => (v*100).toFixed(2) + '%';
+
+// Standard amortizing loan monthly payment
+function pmt(principal, annualRate, months){
+  if(annualRate === 0) return principal / months;
+  const r = annualRate/12;
+  return principal * (r * Math.pow(1+r,months)) / (Math.pow(1+r,months) - 1);
+}
+
+// Total interest paid over life of loan
+function totalInterest(principal, annualRate, months){
+  return pmt(principal, annualRate, months) * months - principal;
+}
+
+// Future value of a single sum compounded annually
+function fv(pv, rate, years){ return pv * Math.pow(1+rate, years); }
+
+// Future value of a stream of monthly contributions (or savings) at annual rate
+function fvAnnuity(monthly, annualRate, years){
+  if(annualRate === 0) return monthly * 12 * years;
+  const r = annualRate/12;
+  const n = years * 12;
+  return monthly * (Math.pow(1+r,n) - 1) / r;
+}
+
+// Lease monthly payment (industry formula)
+//   depreciation = (capCost - residualValue) / term
+//   finance      = (capCost + residualValue) * MF
+//   monthly      = depreciation + finance  (pre-tax)
+function leasePayment(msrp, capCost, residualPct, mf, termMo){
+  const residual = msrp * (residualPct/100);
+  const depreciation = (capCost - residual) / termMo;
+  const financeCharge = (capCost + residual) * mf;
+  return { monthly: depreciation + financeCharge, depreciation, financeCharge, residual };
+}
+
+/* =======================================================================
+   SEGMENT / VEHICLE PICKER
+   ======================================================================= */
+function pickSegment(){
+  // Map body-style answer to segment key; default to 'suv' if unspecified
+  if(state.body && state.body !== 'any') return state.body === 'ev' ? 'ev' : state.body;
+  if(state.powertrain === 'bev') return 'ev';
+  return 'suv';
+}
+
+function pickVehicleModel(seg){
+  // Best Drive Clean tier-2000 EV picks under $42K & ≥200mi range
+  if(seg === 'ev'){
+    if(state.cashAvail < 5000 || state.monthlyBudget < 600){
+      return { name:"Chevy Equinox EV 1LT", msrpNew:34995, msrp1yr:28000, msrp3yr:22000, brand:"gm", driveCleanTier:2000, usAssembly:true };
+    }
+    if(state.features.has('awd')){
+      return { name:"Hyundai Ioniq 5 SE AWD", msrpNew:42500, msrp1yr:34000, msrp3yr:25000, brand:"hyundai", driveCleanTier:500, usAssembly:true };
+    }
+    return { name:"Hyundai Ioniq 5 SE Std", msrpNew:35000, msrp1yr:28500, msrp3yr:22000, brand:"hyundai", driveCleanTier:2000, usAssembly:true };
+  }
+  if(seg === 'sedan'){
+    return { name:"Toyota Camry XLE Hybrid AWD", msrpNew:34000, msrp1yr:29000, msrp3yr:22500, brand:"toyota", usAssembly:true };
+  }
+  if(seg === 'truck'){
+    return { name:"Ford F-150 XLT 4x4", msrpNew:54000, msrp1yr:46000, msrp3yr:36500, brand:"ford", usAssembly:true };
+  }
+  if(seg === 'minivan'){
+    return { name:"Honda Odyssey EX-L", msrpNew:46000, msrp1yr:38500, msrp3yr:28500, brand:"honda", usAssembly:true };
+  }
+  // Default SUV
+  if(state.features.has('3row')){
+    return { name:"Toyota Grand Highlander XLE AWD", msrpNew:48000, msrp1yr:41500, msrp3yr:32500, brand:"toyota", usAssembly:true };
+  }
+  return { name:"Toyota RAV4 Hybrid XLE Premium AWD", msrpNew:38000, msrp1yr:32500, msrp3yr:24500, brand:"toyota", usAssembly:true };
+}
+
+/* =======================================================================
+   CORE COST CALCULATIONS
+   ======================================================================= */
+function lookupAPR(condition, creditTier){
+  // Use Monroe-best for super/prime, fall back to national for weaker tiers
+  const t = creditTier || 'prime';
+  const best = DATA.loanRates.monroeBest;
+  if(condition === 'new'){
+    if(t==='superprime') return best.newSuperprime/100;
+    if(t==='prime') return best.newPrime/100;
+    if(t==='nearprime') return best.newNearprime/100;
+    if(t==='subprime') return best.newSubprime/100;
+    return DATA.loanRates.nationalNew[t]/100;
+  } else {
+    if(t==='superprime') return best.usedSuperprime/100;
+    if(t==='prime') return best.usedPrime/100;
+    if(t==='nearprime') return best.usedNearprime/100;
+    if(t==='subprime') return best.usedSubprime/100;
+    return DATA.loanRates.nationalUsed[t]/100;
+  }
+}
+
+function insAnnual(seg){
+  const key = seg === 'ev' ? 'ev' : seg;
+  return DATA.tco.insAnnual[key] || 1900;
+}
+
+function maintAnnual(brand, seg){
+  if(seg === 'ev') return DATA.tco.maintAnnual.ev;
+  return DATA.tco.maintAnnual[brand] || DATA.tco.maintAnnual.industryAvg;
+}
+
+function fuelAnnual(seg, mileage, mpg){
+  if(seg === 'ev'){
+    return (mileage / DATA.ev.milesPerKwh) * DATA.ev.rgeKwh;
+  }
+  return (mileage / mpg) * DATA.tco.fuel.rochesterRegular;
+}
+
+function nyTax(price, tradeIn){
+  return Math.max(0, (price - tradeIn) * DATA.geography.salesTax);
+}
+
+function nyFees(seg){
+  const reg = (seg === 'truck' || seg === 'suv' || seg === 'minivan') ? DATA.tco.regSuv2yr : DATA.tco.regSedan2yr;
+  return DATA.tco.titlePlate + reg + DATA.tco.monroeUseTax + DATA.tco.docFeeCapNY;
+}
+
+// EV-specific incentive stack
+function evIncentive(vehicle, msrp){
+  if(vehicle.driveCleanTier) return vehicle.driveCleanTier;
+  if(msrp <= 42000) return 2000;
+  return 500;
+}
+
+/* ----- PATH BUILDERS ------------------------------------------------- */
+
+// FINANCE NEW
+function buildFinanceNew(vehicle, seg, ctx){
+  const msrp = vehicle.msrpNew;
+  const term = 60;
+  const apr = lookupAPR('new', state.credit);
+  const downPayment = Math.min(state.cashAvail, msrp * 0.20);
+  const tradeIn = state.tradeIn || 0;
+  const tax = nyTax(msrp, tradeIn);
+  const fees = nyFees(seg);
+  const evRebate = (seg === 'ev') ? evIncentive(vehicle, msrp) : 0;
+  const driveOff = downPayment + fees;  // sales tax financed in NY commonly
+  const principal = Math.max(0, msrp + tax + fees - downPayment - tradeIn - evRebate);
+  const monthlyPI = pmt(principal, apr, term);
+  const totalInt = totalInterest(principal, apr, term);
+
+  // Auto loan interest deduction (US-assembled, not lease)
+  let intDeduction = 0;
+  if(vehicle.usAssembly && state.income < 250000 && DATA.ev.autoLoanInterestDeduction.active){
+    const cap = DATA.ev.autoLoanInterestDeduction.maxPerYear;
+    const yrlyInt = totalInt / (term/12);
+    const deductibleAnnual = Math.min(yrlyInt, cap);
+    // Approx tax savings at 22% bracket
+    const bracket = state.income > 200000 ? 0.24 : (state.income > 100000 ? 0.22 : 0.12);
+    intDeduction = deductibleAnnual * bracket * Math.min(term/12, 4); // deduction active 2025-2028
+  }
+
+  const ins = insAnnual(seg);
+  const maint = maintAnnual(vehicle.brand, seg);
+  const fuel = fuelAnnual(seg, state.mileage || 12000, vehicle.mpgGas || 28);
+  const inspection = DATA.tco.inspectionAnnual;
+  const annualOwnCost = ins + maint + fuel + inspection;
+
+  const hold = state.hold || 5;
+  const totalPayments = monthlyPI * Math.min(term, hold*12);
+  const remainingPrincipal = (hold*12 < term) ? estimateRemainingBalance(principal, apr, term, hold*12) : 0;
+  const ownYears = Math.max(0, hold - term/12);
+
+  // Residual / trade equity at end of hold period
+  const depRate = DATA.used.depreciation5yr[ seg === 'ev' ? 'ev' : (seg==='truck'?'truck':(seg==='sedan'||seg==='suv'?'suv':'ice')) ] || 0.418;
+  const valueAtEnd = msrp * Math.pow(1 - depRate/5, hold); // approx linear-equivalent annual decay
+  const equity = Math.max(0, valueAtEnd - remainingPrincipal);
+
+  const totalOutOfPocket = downPayment + totalPayments + remainingPrincipal + annualOwnCost*hold + tax + fees - evRebate - intDeduction - tradeIn;
+  const netCost = totalOutOfPocket - equity;
+
+  return {
+    type: "Finance New",
+    vehicle: vehicle.name,
+    description: `${term}-month new finance @ ${(apr*100).toFixed(2)}% APR · ${fmt$(downPayment)} down`,
+    upfront: { downPayment, tax, fees, total: downPayment+fees, evRebate },
+    monthly: {
+      pi: monthlyPI,
+      insurance: ins/12, maintenance: maint/12, fuel: fuel/12, inspection: inspection/12,
+      total: monthlyPI + (ins+maint+fuel+inspection)/12
+    },
+    apr, term, principal, totalInt, intDeduction,
+    annualOwnCost, hold,
+    valueAtEnd, equity, remainingPrincipal,
+    totalOutOfPocket, netCost,
+    costPerMile: netCost / (state.mileage * hold),
+    math: `Loan principal: ${fmt$(msrp)} MSRP + ${fmt$(tax)} sales tax (8%) + ${fmt$(fees)} fees − ${fmt$(downPayment)} down − ${fmt$(tradeIn)} trade − ${fmt$(evRebate)} NY Drive Clean = ${fmt$(principal)}
+Monthly P&I @ ${(apr*100).toFixed(2)}%/${term}mo = ${fmt$(monthlyPI)}
+Total interest over ${term}mo: ${fmt$(totalInt)}
+${vehicle.usAssembly ? `New auto loan interest deduction (US-assembled, 2025–2028): ${fmt$(intDeduction)} estimated tax savings` : '— Vehicle not US-assembled; auto loan interest deduction does not apply'}
+Annual ownership: ${fmt$(ins)} insurance + ${fmt$(maint)} maintenance + ${fmt$(fuel)} fuel + ${fmt$(inspection)} inspection = ${fmt$(annualOwnCost)}
+Estimated value at year ${hold}: ${fmt$(valueAtEnd)} (5-yr depreciation ~${(depRate*100).toFixed(0)}%)
+Net cost over ${hold} yrs (payments + ownership − terminal equity): ${fmt$(netCost)}`
+  };
+}
+
+// Approximate remaining balance after k months on a fully-amortizing loan
+function estimateRemainingBalance(principal, apr, term, k){
+  if(apr === 0) return principal * (1 - k/term);
+  const r = apr/12;
+  return principal * (Math.pow(1+r,term) - Math.pow(1+r,k)) / (Math.pow(1+r,term) - 1);
+}
+
+// FINANCE CPO
+function buildFinanceCpo(vehicle, seg, ctx){
+  const msrp = vehicle.msrp1yr;  // 1yr-old as proxy for prime CPO unit
+  const term = 60;
+  const apr = lookupAPR('used', state.credit);
+  const downPayment = Math.min(state.cashAvail, msrp * 0.15);
+  const tradeIn = state.tradeIn || 0;
+  const tax = nyTax(msrp, tradeIn);
+  const fees = nyFees(seg);
+  const principal = Math.max(0, msrp + tax + fees - downPayment - tradeIn);
+  const monthlyPI = pmt(principal, apr, term);
+  const totalInt = totalInterest(principal, apr, term);
+
+  const ins = insAnnual(seg) * 0.95; // slightly cheaper for 1yr-old
+  const maint = maintAnnual(vehicle.brand, seg) * 1.10;
+  const fuel = fuelAnnual(seg, state.mileage || 12000, vehicle.mpgGas || 28);
+  const annualOwnCost = ins + maint + fuel + DATA.tco.inspectionAnnual;
+  const hold = state.hold || 5;
+
+  const depRate = DATA.used.depreciation5yr[seg==='ev'?'ev':'suv'] || 0.418;
+  const valueAtEnd = msrp * Math.pow(1 - (depRate*0.7)/5, hold); // CPO depreciates less in absolute terms
+  const remainingPrincipal = (hold*12 < term) ? estimateRemainingBalance(principal, apr, term, hold*12) : 0;
+  const equity = Math.max(0, valueAtEnd - remainingPrincipal);
+  const totalPayments = monthlyPI * Math.min(term, hold*12);
+  const totalOutOfPocket = downPayment + totalPayments + remainingPrincipal + annualOwnCost*hold + tax + fees - tradeIn;
+  const netCost = totalOutOfPocket - equity;
+
+  return {
+    type: "Finance CPO",
+    vehicle: vehicle.name + " (CPO, 1-yr-old)",
+    description: `${term}-month CPO finance @ ${(apr*100).toFixed(2)}% APR · ${fmt$(downPayment)} down · ${vehicle.brand==='hyundai'||vehicle.brand==='kia' ? '10-yr/100K reinstated' : 'OEM CPO warranty'}`,
+    upfront: { downPayment, tax, fees, total: downPayment+fees },
+    monthly: { pi: monthlyPI, insurance: ins/12, maintenance: maint/12, fuel: fuel/12, inspection: DATA.tco.inspectionAnnual/12,
+      total: monthlyPI + (ins+maint+fuel+DATA.tco.inspectionAnnual)/12 },
+    apr, term, principal, totalInt,
+    annualOwnCost, hold,
+    valueAtEnd, equity, remainingPrincipal,
+    totalOutOfPocket, netCost,
+    costPerMile: netCost / (state.mileage * hold),
+    math: `1-year-old MSRP estimate: ${fmt$(msrp)} (vs new ${fmt$(vehicle.msrpNew)} — gap ${fmt$(vehicle.msrpNew - vehicle.msrp1yr)})
+Loan principal: ${fmt$(msrp)} + ${fmt$(tax)} tax + ${fmt$(fees)} fees − ${fmt$(downPayment)} down − ${fmt$(tradeIn)} trade = ${fmt$(principal)}
+Monthly P&I @ ${(apr*100).toFixed(2)}%/${term}mo = ${fmt$(monthlyPI)}
+The new-to-1yr-old gap is at its widest point since 2015 (Cox/Manheim Jan 2026: $48,576 new vs $38,354 1-yr ATP).
+Hyundai/Kia/Genesis CPO restored 10-yr/100K powertrain coverage in 2025.
+Net cost over ${hold} yrs: ${fmt$(netCost)}`
+  };
+}
+
+// FINANCE USED
+function buildFinanceUsed(vehicle, seg, ctx){
+  const msrp = vehicle.msrp3yr;
+  const term = 60;
+  const apr = lookupAPR('used', state.credit);
+  const downPayment = Math.min(state.cashAvail, msrp * 0.10);
+  const tradeIn = state.tradeIn || 0;
+  const tax = nyTax(msrp, tradeIn);
+  const fees = nyFees(seg);
+  const principal = Math.max(0, msrp + tax + fees - downPayment - tradeIn);
+  const monthlyPI = pmt(principal, apr, term);
+  const totalInt = totalInterest(principal, apr, term);
+  const ins = insAnnual(seg) * 0.85;
+  const maint = maintAnnual(vehicle.brand, seg) * 1.35;
+  const fuel = fuelAnnual(seg, state.mileage || 12000, vehicle.mpgGas || 28);
+  const annualOwnCost = ins + maint + fuel + DATA.tco.inspectionAnnual;
+  const hold = state.hold || 5;
+  const valueAtEnd = msrp * Math.pow(0.85, hold);
+  const remainingPrincipal = (hold*12 < term) ? estimateRemainingBalance(principal, apr, term, hold*12) : 0;
+  const equity = Math.max(0, valueAtEnd - remainingPrincipal);
+  const totalPayments = monthlyPI * Math.min(term, hold*12);
+  const totalOutOfPocket = downPayment + totalPayments + remainingPrincipal + annualOwnCost*hold + tax + fees - tradeIn;
+  const netCost = totalOutOfPocket - equity;
+
+  return {
+    type: "Finance Used",
+    vehicle: vehicle.name + " (3-yr-old)",
+    description: `${term}-mo used finance @ ${(apr*100).toFixed(2)}% APR · ${fmt$(downPayment)} down`,
+    upfront: { downPayment, tax, fees, total: downPayment+fees },
+    monthly: { pi: monthlyPI, insurance: ins/12, maintenance: maint/12, fuel: fuel/12, inspection: DATA.tco.inspectionAnnual/12,
+      total: monthlyPI + (ins+maint+fuel+DATA.tco.inspectionAnnual)/12 },
+    apr, term, principal, totalInt,
+    annualOwnCost, hold,
+    valueAtEnd, equity, remainingPrincipal,
+    totalOutOfPocket, netCost,
+    costPerMile: netCost / (state.mileage * hold),
+    math: `3-year-old market price estimate: ${fmt$(msrp)} (Manheim April 2026 index 211.9, MoM −1.6%, YoY +1.8%)
+Used APR ${(apr*100).toFixed(2)}% (Edmunds Q1 2026 used avg ~11%; ESL Rochester 4-yr-old 7.54%)
+Maintenance reserve uplifted 35% vs new (out of warranty)
+Net cost over ${hold} yrs: ${fmt$(netCost)}`
+  };
+}
+
+// LEASE NEW
+function buildLeaseNew(vehicle, seg, ctx){
+  const msrp = vehicle.msrpNew;
+  const term = 36;
+  const mf = DATA.lease.avgMFforSegment[seg] || DATA.lease.avgMFforSegment.suv;
+  const residualPct = DATA.lease.avgResidualPct[seg] || 60;
+  const acqFee = vehicle.brand === 'toyota' ? DATA.lease.acqFee.toyota :
+    (['bmw','mercedes','audi','lexus'].includes(vehicle.brand) ? DATA.lease.acqFee.luxury : DATA.lease.acqFee.mainstream);
+  const evLeaseCash = (seg === 'ev' && DATA.lease.evLeaseCash[(vehicle.name||'').toLowerCase().includes('ioniq')?'ioniq5':
+    ((vehicle.name||'').toLowerCase().includes('prologue')?'prologue':null)]) || 0;
+  const dasTarget = Math.min(state.cashAvail*0.25, 4000);
+  const capCost = msrp - evLeaseCash;
+  const lease = leasePayment(msrp, capCost, residualPct, mf, term);
+  const monthlyPmt = lease.monthly * (1 + DATA.geography.salesTax);
+  const driveOff = dasTarget + acqFee + monthlyPmt;
+  const ins = insAnnual(seg);
+  const maint = maintAnnual(vehicle.brand, seg) * 0.5; // covered under warranty
+  const fuel = fuelAnnual(seg, state.mileage || 12000, vehicle.mpgGas || 28);
+  const annualOwnCost = ins + maint + fuel + DATA.tco.inspectionAnnual;
+  const totalLeasePayments = monthlyPmt * term;
+
+  // Excess mileage if user drives more than 12K
+  const overMileage = Math.max(0, (state.mileage - 12000) * (term/12)) * DATA.lease.excessMileage;
+
+  const totalOutOfPocket = driveOff + (monthlyPmt * (term-1)) + annualOwnCost*(term/12) + overMileage;
+  const netCost = totalOutOfPocket; // no terminal equity in a lease
+
+  return {
+    type: "Lease New",
+    vehicle: vehicle.name,
+    description: `${term}-mo lease · MF ${mf.toFixed(5)} (${(mf*2400).toFixed(2)}% APR-eq) · ${residualPct}% residual · ${fmt$(dasTarget)} DAS`,
+    upfront: { downPayment: dasTarget, tax: 0, fees: acqFee, total: driveOff },
+    monthly: { pi: monthlyPmt, insurance: ins/12, maintenance: maint/12, fuel: fuel/12, inspection: DATA.tco.inspectionAnnual/12,
+      total: monthlyPmt + (ins+maint+fuel+DATA.tco.inspectionAnnual)/12 },
+    apr: mf*2400/100,
+    term, mf, residualPct,
+    annualOwnCost, hold: term/12,
+    valueAtEnd:0, equity:0, remainingPrincipal:0,
+    totalOutOfPocket, netCost, evLeaseCash,
+    costPerMile: netCost / (state.mileage * (term/12)),
+    overMileagePenalty: overMileage,
+    math: `Cap cost: ${fmt$(msrp)} MSRP ${evLeaseCash?`− ${fmt$(evLeaseCash)} OEM lease cash `:''}= ${fmt$(capCost)}
+Residual: ${fmt$(msrp)} × ${residualPct}% = ${fmt$(lease.residual)}
+Money factor: ${mf.toFixed(5)} (≈ ${(mf*2400).toFixed(2)}% APR equivalent)
+Depreciation portion: (${fmt$(capCost)} − ${fmt$(lease.residual)}) ÷ ${term} = ${fmt$(lease.depreciation)}/mo
+Finance portion: (${fmt$(capCost)} + ${fmt$(lease.residual)}) × ${mf.toFixed(5)} = ${fmt$(lease.financeCharge)}/mo
+Pre-tax payment: ${fmt$(lease.monthly)} · After 8% NY tax: ${fmt$(monthlyPmt)}
+Acquisition fee: ${fmt$(acqFee)} · DAS ${fmt$(dasTarget)} → drive-off ${fmt$(driveOff)}
+${overMileage>0 ? `⚠ At ${state.mileage.toLocaleString()} mi/yr you'd accrue ~${fmt$(overMileage)} in excess-mileage penalties at $0.20/mi.` : ''}
+Note: Federal §45W lease pass-through ($7,500) terminated 9/30/2025 under OBBBA — any "lease cash" is OEM-funded and volatile.`
+  };
+}
+
+// CASH PURCHASE
+function buildCash(vehicle, seg, ctx){
+  const msrp = vehicle.msrpNew;
+  const tax = nyTax(msrp, state.tradeIn);
+  const fees = nyFees(seg);
+  const evRebate = (seg === 'ev') ? evIncentive(vehicle, msrp) : 0;
+  const totalCash = msrp + tax + fees - state.tradeIn - evRebate;
+  const ins = insAnnual(seg);
+  const maint = maintAnnual(vehicle.brand, seg);
+  const fuel = fuelAnnual(seg, state.mileage || 12000, vehicle.mpgGas || 28);
+  const annualOwnCost = ins + maint + fuel + DATA.tco.inspectionAnnual;
+  const hold = state.hold || 5;
+  const depRate = DATA.used.depreciation5yr[seg==='ev'?'ev':'suv'] || 0.418;
+  const valueAtEnd = msrp * Math.pow(1 - depRate/5, hold);
+  const totalOutOfPocket = totalCash + annualOwnCost*hold;
+  const netCost = totalOutOfPocket - valueAtEnd;
+  return {
+    type: "Cash Purchase",
+    vehicle: vehicle.name,
+    description: `Outright at delivery · ${fmt$(totalCash)} drive-off`,
+    upfront: { downPayment: totalCash, tax, fees, total: totalCash, evRebate },
+    monthly: { pi: 0, insurance: ins/12, maintenance: maint/12, fuel: fuel/12, inspection: DATA.tco.inspectionAnnual/12,
+      total: (ins+maint+fuel+DATA.tco.inspectionAnnual)/12 },
+    apr: 0, term: 0, principal: 0, totalInt: 0,
+    annualOwnCost, hold,
+    valueAtEnd, equity: valueAtEnd, remainingPrincipal: 0,
+    totalOutOfPocket, netCost,
+    cashTied: totalCash,
+    costPerMile: netCost / (state.mileage * hold),
+    math: `Total cash at signing: ${fmt$(msrp)} + ${fmt$(tax)} tax + ${fmt$(fees)} fees − ${fmt$(state.tradeIn)} trade${evRebate?` − ${fmt$(evRebate)} NY Drive Clean`:''} = ${fmt$(totalCash)}
+No interest paid · No financing decision to revisit
+Estimated value at year ${hold}: ${fmt$(valueAtEnd)}
+Net out-of-pocket cost over ${hold} yrs: ${fmt$(netCost)}
+⚠ This figure ignores the opportunity cost of tying up ${fmt$(totalCash)} — that's the next path's job.`
+  };
+}
+
+// CASH + INVEST DELTA  (the Icono differentiator)
+// Compare: pay cash now vs. finance with a 0% or low APR offer and invest the rest
+function buildCashInvestDelta(vehicle, seg, ctx, financeNew){
+  const cashCost = buildCash(vehicle, seg, ctx);
+  const totalCash = cashCost.cashTied;
+
+  // Find best 0%/low captive APR for this vehicle if applicable
+  const captiveMatch = DATA.loanRates.captiveOffers.find(o =>
+    (vehicle.name || '').toLowerCase().includes(o.name.split(' ')[0].toLowerCase()) ||
+    (vehicle.brand && o.name.toLowerCase().includes(vehicle.brand.toLowerCase()))
+  );
+  const captiveApr = captiveMatch ? captiveMatch.apr/100 : lookupAPR('new', state.credit);
+  const captiveTerm = captiveMatch ? captiveMatch.term : 60;
+  const minDown = totalCash * 0.10;
+  const principal = totalCash - minDown;
+  const monthlyPI = pmt(principal, captiveApr, captiveTerm);
+  const totalInt = totalInterest(principal, captiveApr, captiveTerm);
+
+  // Cash kept for investment = total cash that would have been paid − (down + monthly outflows)
+  // Simpler: invest (totalCash − minDown) at expectedReturn, but reduce by sum of payments
+  const r = state.expectedReturn / 100;
+  const hold = Math.min(state.hold || 5, captiveTerm/12);
+  const investedNow = totalCash - minDown;
+  const fvLumpSum = fv(investedNow, r, hold);
+  // but each month you pay monthlyPI from "could have been invested"; that's lost FV
+  const fvMonthlyPaymentsForgone = fvAnnuity(monthlyPI, r, hold);
+  const netInvestmentBalance = fvLumpSum - fvMonthlyPaymentsForgone;
+  const investmentGain = netInvestmentBalance - investedNow + monthlyPI*hold*12;
+  // Investment gain over interest cost is the "free money" if positive
+  const arbitrage = investmentGain - totalInt;
+
+  const ins = insAnnual(seg);
+  const maint = maintAnnual(vehicle.brand, seg);
+  const fuel = fuelAnnual(seg, state.mileage || 12000, vehicle.mpgGas || 28);
+  const annualOwnCost = ins + maint + fuel + DATA.tco.inspectionAnnual;
+  const depRate = DATA.used.depreciation5yr[seg==='ev'?'ev':'suv'] || 0.418;
+  const valueAtEnd = vehicle.msrpNew * Math.pow(1 - depRate/5, hold);
+  const remainingPrincipal = estimateRemainingBalance(principal, captiveApr, captiveTerm, hold*12);
+  const equity = Math.max(0, valueAtEnd - remainingPrincipal);
+  const totalPayments = monthlyPI * hold * 12;
+  const totalOutOfPocket = minDown + totalPayments + remainingPrincipal + annualOwnCost*hold;
+  const netCost = totalOutOfPocket - equity - investmentGain;
+
+  return {
+    type: "Finance + Invest the Delta",
+    vehicle: vehicle.name,
+    description: captiveMatch
+      ? `${captiveTerm}-mo captive @ ${(captiveApr*100).toFixed(2)}% — invest the cash you'd have spent`
+      : `${captiveTerm}-mo standard @ ${(captiveApr*100).toFixed(2)}% — compare keeping cash invested`,
+    upfront: { downPayment: minDown, tax: 0, fees: 0, total: minDown },
+    monthly: { pi: monthlyPI, insurance: ins/12, maintenance: maint/12, fuel: fuel/12, inspection: DATA.tco.inspectionAnnual/12,
+      total: monthlyPI + (ins+maint+fuel+DATA.tco.inspectionAnnual)/12 },
+    apr: captiveApr, term: captiveTerm, principal, totalInt,
+    annualOwnCost, hold,
+    valueAtEnd, equity, remainingPrincipal,
+    totalOutOfPocket, netCost,
+    cashRetained: investedNow,
+    investmentGain,
+    arbitrage,
+    expectedReturn: r,
+    isArbitrage: arbitrage > 0,
+    captiveMatch: !!captiveMatch,
+    captiveName: captiveMatch ? captiveMatch.name : null,
+    costPerMile: netCost / (state.mileage * hold),
+    math: `Path A (pay cash): ${fmt$(totalCash)} out the door — done.
+Path B (this path): finance ${fmt$(principal)} @ ${(captiveApr*100).toFixed(2)}% for ${captiveTerm} mo, keep ${fmt$(investedNow)} invested at ${(r*100).toFixed(1)}%.
+Total interest paid over ${captiveTerm} mo: ${fmt$(totalInt)}
+FV of ${fmt$(investedNow)} compounded ${hold.toFixed(1)} yrs @ ${(r*100).toFixed(1)}%: ${fmt$(fvLumpSum)}
+Less FV of ${fmt$(monthlyPI)}/mo payments forgone (had they been invested): ${fmt$(fvMonthlyPaymentsForgone)}
+Net investment gain: ${fmt$(investmentGain)}
+Arbitrage (gain − interest): ${arbitrage>=0?'+':''}${fmt$(arbitrage)} ${arbitrage>=0?'in your favor':'against you'}
+${captiveMatch ? `🎯 ${captiveMatch.name} captive is offering ${(captiveApr*100).toFixed(2)}% — exactly the kind of subvented offer that flips this math.` : 'Without a 0% captive offer, the standard ' + (lookupAPR('new', state.credit)*100).toFixed(2) + '% rate makes this harder to win.'}
+This is the question Icono asks: where do these dollars want to live?`
+  };
+}
+
+/* =======================================================================
+   PATH SELECTION LOGIC
+   ======================================================================= */
+function selectPaths(vehicle, seg){
+  const paths = [];
+  const cashRich = state.cashAvail >= vehicle.msrpNew * 0.85;
+  const decentReturn = state.expectedReturn >= 5;
+  const highMileage = state.mileage >= 15000;
+  const shortHold = state.hold && state.hold < 3;
+  const longHold = state.hold && state.hold >= 6;
+  const challengedCredit = state.credit === 'subprime' || state.credit === 'nearprime';
+
+  // Always at least one ownership path
+  if(state.condition === 'used' || (state.condition === 'open' && longHold && !cashRich)){
+    paths.push('financeUsed');
+  } else if(state.condition === 'cpo' || challengedCredit){
+    paths.push('financeCpo');
+  } else {
+    paths.push('financeNew');
+  }
+
+  // Second path varies by situation
+  if(cashRich && decentReturn && state.condition !== 'used'){
+    paths.push('cashInvest');                  // Icono signature comparison
+  } else if(shortHold && !highMileage && state.condition !== 'used'){
+    paths.push('leaseNew');                    // <3yr hold, sub-15K mi
+  } else if(state.condition === 'open' || state.condition === 'cpo'){
+    paths.push('financeCpo');                  // gap pricing argument
+  } else if(longHold && state.condition === 'new'){
+    paths.push('financeUsed');                 // hold-it-out case
+  } else if(!highMileage && state.qLease >= 4){
+    paths.push('leaseNew');                    // user comfortable with mileage cap
+  } else if(challengedCredit){
+    paths.push('financeUsed');
+  } else if(cashRich){
+    paths.push('cashInvest');
+  } else {
+    paths.push('leaseNew');
+  }
+
+  // Dedupe and ensure we always return exactly 2 distinct paths
+  let unique = [...new Set(paths)];
+  if(unique.length < 2){
+    // Add a complementary fallback that contrasts with what we already have
+    const have = unique[0];
+    const fallbackOrder = {
+      financeUsed:    ['financeCpo', 'financeNew', 'leaseNew'],
+      financeCpo:     ['financeNew', 'financeUsed', 'leaseNew'],
+      financeNew:     ['cashInvest', 'leaseNew', 'financeCpo'],
+      leaseNew:       ['financeNew', 'cashInvest', 'financeCpo'],
+      cashInvest:     ['leaseNew', 'financeNew', 'financeCpo']
+    };
+    const candidates = fallbackOrder[have] || ['financeNew','leaseNew','cashInvest'];
+    for(const c of candidates){
+      if(c !== have){ unique.push(c); break; }
+    }
+  }
+  return unique.slice(0,2);
+}
+
+const PATH_BUILDERS = {
+  financeNew: buildFinanceNew,
+  financeCpo: buildFinanceCpo,
+  financeUsed: buildFinanceUsed,
+  leaseNew: buildLeaseNew,
+  cash: buildCash,
+  cashInvest: (v,s,c)=> buildCashInvestDelta(v,s,c,null)
+};
+
+/* =======================================================================
+   FIT SCORE
+   ======================================================================= */
+function fitScore(path, vehicle, seg){
+  let score = 60;
+  const reasons = [];
+
+  // Budget alignment
+  const monthly = path.monthly.total;
+  if(monthly <= state.monthlyBudget){
+    score += 12; reasons.push(`fits inside your ${fmt$(state.monthlyBudget)}/mo budget`);
+  } else if(monthly <= state.monthlyBudget * 1.10){
+    score -= 4; reasons.push(`runs about ${Math.round((monthly/state.monthlyBudget-1)*100)}% over your budget`);
+  } else {
+    score -= 14; reasons.push(`exceeds your stated budget by ${fmt$(monthly - state.monthlyBudget)}/mo`);
+  }
+
+  // Hold-period fit
+  if(path.type.includes('Lease')){
+    if(state.hold && state.hold <= 3.5){ score += 10; reasons.push('lease term aligns with your shorter hold preference'); }
+    else if(state.hold >= 5){ score -= 16; reasons.push("you keep cars too long for a lease to make financial sense"); }
+    if(state.mileage >= 15000){ score -= 18; reasons.push('your mileage exceeds typical lease caps'); }
+    if(state.qNew >= 4){ score += 6; reasons.push('lets you cycle into new safety tech every 3 yrs'); }
+  }
+  if(path.type.includes('CPO')){
+    if(state.qUsed >= 3){ score += 6; reasons.push('CPO splits the new-vs-used gap with warranty backing'); }
+    if(state.cashAvail < 8000){ score += 4; reasons.push('lower price reduces down payment burden'); }
+  }
+  if(path.type === 'Finance Used'){
+    if(state.qUsed >= 4){ score += 12; reasons.push('comfortable with used-vehicle mechanical risk'); }
+    else if(state.qUsed <= 2){ score -= 16; reasons.push('used route conflicts with your stated risk preference'); }
+    if(state.hold >= 5){ score += 6; reasons.push('long hold means depreciation curve flattens in your favor'); }
+  }
+  if(path.type === 'Finance New'){
+    if(state.qNew >= 4){ score += 6; reasons.push('matches your preference for the latest tech'); }
+    if(path.intDeduction > 500){ score += 4; reasons.push(`captures ~${fmt$(path.intDeduction)} new auto loan interest deduction`); }
+    if(state.hold >= 6){ score += 4; reasons.push('long hold spreads new-car premium over many years'); }
+  }
+  if(path.type === 'Cash Purchase'){
+    if(state.qCashflow <= 2){ score += 8; reasons.push('frees you from monthly cash-flow obligations'); }
+    else if(state.qCashflow >= 4){ score -= 6; reasons.push('locks up cash that you said you value having flexible'); }
+  }
+  if(path.type.includes('Invest')){
+    if(state.expectedReturn >= path.apr*100 + 3){ score += 14; reasons.push(`your ${state.expectedReturn}% expected return clears the ${(path.apr*100).toFixed(2)}% borrowing cost by a comfortable margin`); }
+    if(path.captiveMatch){ score += 8; reasons.push(`subvented captive offer (${path.captiveName}) makes the arbitrage especially clean`); }
+    if(path.arbitrage > 0){ score += 6; reasons.push(`projected ${fmt$(path.arbitrage)} arbitrage in your favor over the hold`); }
+    else { score -= 8; reasons.push(`projected arbitrage is negative — financing here costs more than the cash earns`); }
+  }
+
+  // EV-specific
+  if(seg === 'ev'){
+    if(state.powertrain === 'bev'){ score += 6; reasons.push('matches your stated EV preference'); }
+    if(vehicle.driveCleanTier === 2000){ score += 4; reasons.push(`qualifies for full ${fmt$(2000)} NY Drive Clean rebate`); }
+  }
+
+  return { score: Math.max(15, Math.min(98, Math.round(score))), reasons };
+}
+
+/* =======================================================================
+   RENDER RESULTS
+   ======================================================================= */
+let tcoChart = null;
+
+function generatePaths(){
+  const seg = pickSegment();
+  const vehicle = pickVehicleModel(seg);
+
+  // Default missing answers to median
+  if(!state.mileage) state.mileage = 12000;
+  if(!state.hold) state.hold = 5;
+  if(!state.credit) state.credit = 'prime';
+  if(!state.condition) state.condition = 'open';
+
+  const pathKeys = selectPaths(vehicle, seg);
+  const paths = pathKeys.map(k => PATH_BUILDERS[k](vehicle, seg, {}));
+
+  // Score them
+  paths.forEach(p => {
+    const fit = fitScore(p, vehicle, seg);
+    p.fit = fit.score;
+    p.fitReasons = fit.reasons;
+  });
+
+  // Order: better fit first
+  paths.sort((a,b)=> b.fit - a.fit);
+
+  renderPaths(paths, vehicle, seg);
+  renderCompareGrid(paths);
+  renderTcoChart(paths);
+  renderListings(vehicle, seg);
+  renderDealers(vehicle);
+  goToPhase(5);
+}
+
+function renderPaths(paths, vehicle, seg){
+  const container = document.getElementById('pathsContainer');
+  container.innerHTML = '';
+
+  document.getElementById('resultHeadline').textContent =
+    `Two paths for the ${vehicle.name}.`;
+  document.getElementById('resultSubhead').textContent =
+    `Sized for a ${state.mileage.toLocaleString()}-mile/yr driver in ${state.zip}, holding ~${state.hold} years, with ${fmt$(state.cashAvail)} cash on hand.`;
+
+  paths.forEach((p, i)=>{
+    const isPrimary = i === 0;
+    const card = document.createElement('div');
+    card.className = 'path-card' + (isPrimary ? ' primary' : '');
+    card.innerHTML = `
+      ${isPrimary ? '<div class="ribbon">Best fit</div>' : ''}
+      <div class="eyebrow">${p.type}</div>
+      <div class="path-title">${p.vehicle}</div>
+      <div class="path-sub">${p.description}</div>
+
+      <div class="hero-fig">${fmt$(p.monthly.total)}<span style="font-size:1rem; color:var(--muted)">/mo all-in</span></div>
+      <div class="hero-cap">payment + insurance + fuel + maintenance + inspection</div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:10px 0">
+        <div>
+          <div class="hero-cap">Drive-off</div>
+          <div style="font-family:var(--serif); font-size:1.25rem; color:var(--teal-deep)">${fmt$(p.upfront.total)}</div>
+        </div>
+        <div>
+          <div class="hero-cap">Net cost over ${p.hold} yrs</div>
+          <div style="font-family:var(--serif); font-size:1.25rem; color:var(--teal-deep)">${fmt$(p.netCost)}</div>
+        </div>
+      </div>
+
+      <div class="hero-cap">Fit score</div>
+      <div class="fit-bar"><span style="width:${p.fit}%"></span></div>
+      <div style="display:flex; justify-content:space-between; align-items:baseline">
+        <span class="fit-num">${p.fit}/100</span>
+        <span style="font-size:.78rem; color:var(--muted)">cost-per-mi: ${fmt$1(p.costPerMile)}</span>
+      </div>
+
+      <div class="rationale">
+        <strong>Why this fits:</strong> ${p.fitReasons.slice(0,3).join('; ')}.
+      </div>
+
+      ${p.type.includes('Invest') ? `
+        <div class="opp-cost">
+          <div class="eyebrow">Opportunity cost overlay</div>
+          <div class="opp-cost-fig">${p.arbitrage>=0?'+':''}${fmt$(p.arbitrage)}</div>
+          <div style="font-size:.85rem; color:var(--ink-soft); margin-top:4px">
+            Projected investment gain on the cash you keep, less interest paid on the loan,
+            over ${p.hold.toFixed(1)} years at ${(p.expectedReturn*100).toFixed(1)}% expected return.
+            ${p.arbitrage>=0 ? 'Cash works harder invested.' : 'Cash works harder paying off the vehicle.'}
+          </div>
+        </div>
+      ` : ''}
+      ${p.type === 'Cash Purchase' ? `
+        <div class="opp-cost">
+          <div class="eyebrow">Opportunity cost</div>
+          <div class="opp-cost-fig">−${fmt$(fv(p.cashTied, state.expectedReturn/100, p.hold) - p.cashTied)}</div>
+          <div style="font-size:.85rem; color:var(--ink-soft); margin-top:4px">
+            What ${fmt$(p.cashTied)} could have grown to over ${p.hold} yrs at ${state.expectedReturn}%, instead of being deployed into the vehicle.
+          </div>
+        </div>
+      ` : ''}
+
+      <div class="breakdown">
+        <div class="row-line"><span>Drive-off (down + tax + fees)</span><span class="num">${fmt$(p.upfront.total)}</span></div>
+        <div class="row-line"><span>Monthly P&I or lease</span><span class="num">${fmt$(p.monthly.pi)}/mo</span></div>
+        <div class="row-line"><span>Insurance (annual)</span><span class="num">${fmt$(p.monthly.insurance*12)}</span></div>
+        <div class="row-line"><span>Maintenance (annual)</span><span class="num">${fmt$(p.monthly.maintenance*12)}</span></div>
+        <div class="row-line"><span>${seg==='ev'?'Electricity':'Fuel'} (annual)</span><span class="num">${fmt$(p.monthly.fuel*12)}</span></div>
+        <div class="row-line"><span>Inspection</span><span class="num">${fmt$(p.monthly.inspection*12)}</span></div>
+        ${p.totalInt ? `<div class="row-line"><span>Total interest paid</span><span class="num">${fmt$(p.totalInt)}</span></div>` : ''}
+        ${p.equity ? `<div class="row-line"><span>Estimated equity at end</span><span class="num">${fmt$(p.equity)}</span></div>` : ''}
+        <div class="row-line bold"><span>Net cost over ${p.hold} yrs</span><span class="num">${fmt$(p.netCost)}</span></div>
+      </div>
+
+      <details class="math">
+        <summary>How was this calculated?</summary>
+        <div class="math-body">${p.math}</div>
+      </details>
+    `;
+    container.appendChild(card);
+  });
+}
+
+function renderCompareGrid(paths){
+  const grid = document.getElementById('compareGrid');
+  const rows = [
+    ['', paths[0].type, paths[1].type],
+    ['Drive-off', fmt$(paths[0].upfront.total), fmt$(paths[1].upfront.total)],
+    ['Monthly all-in', fmt$(paths[0].monthly.total), fmt$(paths[1].monthly.total)],
+    ['Net cost over hold', fmt$(paths[0].netCost), fmt$(paths[1].netCost)],
+    ['Cost per mile', fmt$1(paths[0].costPerMile), fmt$1(paths[1].costPerMile)],
+    ['Fit score', paths[0].fit + '/100', paths[1].fit + '/100']
+  ];
+  grid.innerHTML = '';
+  rows.forEach((r, i)=>{
+    r.forEach((cell, j)=>{
+      const div = document.createElement('div');
+      if(i===0) div.className = 'h';
+      else if(j===0) div.className = 'lbl';
+      div.textContent = cell;
+      grid.appendChild(div);
+    });
+  });
+}
+
+function renderTcoChart(paths){
+  const ctx = document.getElementById('tcoChart').getContext('2d');
+  if(tcoChart) tcoChart.destroy();
+  const years = Array.from({length: Math.max(paths[0].hold, paths[1].hold)+1}, (_,i)=> 'Year ' + i);
+  const datasets = paths.map((p, i)=>{
+    const data = [p.upfront.total];
+    let cumulative = p.upfront.total;
+    const yrs = Math.ceil(p.hold);
+    for(let y=1; y<=yrs; y++){
+      cumulative += p.monthly.total*12;
+      data.push(cumulative);
+    }
+    while(data.length < years.length) data.push(null);
+    return {
+      label: p.type + ' — ' + p.vehicle,
+      data,
+      borderColor: i===0 ? '#1C5355' : '#4EB8BC',
+      backgroundColor: i===0 ? 'rgba(28,83,85,.08)' : 'rgba(78,184,188,.08)',
+      borderWidth: 2.5,
+      tension: .25,
+      fill: true,
+      pointBackgroundColor: i===0 ? '#1C5355' : '#4EB8BC',
+      pointRadius: 4
+    };
+  });
+  tcoChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels: years, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position:'top', labels:{ font:{ family:'Outfit', size:12 }, color:'#1A1F1F' } },
+        tooltip: { callbacks: { label: ctx => ctx.dataset.label + ': ' + fmt$(ctx.parsed.y) } }
+      },
+      scales: {
+        y: { ticks: { callback: v => '$'+(v/1000).toFixed(0)+'k', font:{family:'Outfit'} }, grid:{ color:'#E8DFC8'} },
+        x: { ticks: { font:{family:'Outfit'} }, grid:{ display:false } }
+      }
+    }
+  });
+}
+
+function renderListings(vehicle, seg){
+  const grid = document.getElementById('listingsGrid');
+  document.getElementById('listingsTitle').textContent =
+    `Live inventory · ${vehicle.name}, within 50 mi of ${state.zip}`;
+  const q = encodeURIComponent(vehicle.name);
+  const zip = state.zip;
+  const links = [
+    { src:'Cars.com',    url:`https://www.cars.com/shopping/results/?stock_type=all&makes[]=&models[]=&list_price_max=&maximum_distance=50&zip=${zip}&keyword=${q}` },
+    { src:'CarGurus',    url:`https://www.cargurus.com/Cars/inventorylisting/viewDetailsFilterViewInventoryListing.action?sourceContext=carGurusHomePageModel&entitySelectingHelper.selectedEntity=&zip=${zip}&distance=50&searchKeywords=${q}` },
+    { src:'Autotrader',  url:`https://www.autotrader.com/cars-for-sale/all-cars?searchRadius=50&zip=${zip}&keywordPhrases=${q}` },
+    { src:'CarMax',      url:`https://www.carmax.com/cars/all?zip=${zip}&distance=50&search=${q}` },
+    { src:'Carvana',     url:`https://www.carvana.com/cars?cvnaid=${q}` },
+    { src:'TrueCar',     url:`https://www.truecar.com/used-cars-for-sale/listings/?searchTerm=${q}&zip=${zip}` }
+  ];
+  grid.innerHTML = '';
+  links.forEach(l=>{
+    const a = document.createElement('a');
+    a.href = l.url; a.target = '_blank'; a.rel = 'noopener'; a.className = 'listing-link';
+    a.innerHTML = `<div class="src">${l.src}</div><div class="ttl">Search ${vehicle.name}</div>`;
+    grid.appendChild(a);
+  });
+}
+
+function renderDealers(vehicle){
+  const ul = document.getElementById('dealerList');
+  const brand = vehicle.brand || 'toyota';
+  const list = DATA.dealers[brand] || DATA.dealers.toyota;
+  ul.innerHTML = '';
+  list.forEach(name=>{
+    const li = document.createElement('li');
+    const mapsUrl = `https://www.google.com/maps/search/${encodeURIComponent(name + ' Rochester NY')}`;
+    li.innerHTML = `<span>${name}</span><a href="${mapsUrl}" target="_blank" rel="noopener" style="font-size:.82rem">Map →</a>`;
+    ul.appendChild(li);
+  });
+  // Always include CarMax for cross-shopping
+  if(brand !== 'cpo'){
+    const li = document.createElement('li');
+    li.innerHTML = `<span>CarMax Rochester · 3600 W Henrietta Rd</span><a href="https://www.google.com/maps/search/CarMax+Rochester+NY" target="_blank" rel="noopener" style="font-size:.82rem">Map →</a>`;
+    ul.appendChild(li);
+  }
+}
+</script>
+</body>
+</html>
